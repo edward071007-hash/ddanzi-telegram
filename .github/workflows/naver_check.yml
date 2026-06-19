@@ -1,11 +1,8 @@
-name: Ddanzi to Telegram
+name: Naver Blog to Telegram
 
 on:
   schedule:
-    # 한국증시 요약 (06:00~08:00 KST = 21:00~23:00 UTC 전날)
-    - cron: '*/10 21-22 * * 0-5'
-    # 미국증시 요약 (16:00~18:00 KST = 07:00~09:00 UTC)
-    - cron: '*/10 7-8 * * 0-5'
+    - cron: '*/30 * * * *'  # 30분마다 체크
   workflow_dispatch:
 
 jobs:
@@ -22,17 +19,17 @@ jobs:
       - name: Restore last post IDs
         uses: actions/cache/restore@v4
         with:
-          path: ddanzi_last_ids.json
-          key: ddanzi-last-ids
+          path: naver_last_ids.json
+          key: naver-last-ids
 
       - name: Run crawler
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python ddanzi_to_telegram.py
+        run: python naver_to_telegram.py
 
       - name: Save last post IDs
         uses: actions/cache/save@v4
         with:
-          path: ddanzi_last_ids.json
-          key: ddanzi-last-ids-${{ github.run_id }}
+          path: naver_last_ids.json
+          key: naver-last-ids-${{ github.run_id }}

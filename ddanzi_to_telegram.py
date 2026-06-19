@@ -7,9 +7,13 @@ import html
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
-TARGET_AUTHOR = "정대만mitsui"
-SEARCH_URL = "https://www.ddanzi.com/index.php?_filter=search&mid=free&search_target=nick_name&search_keyword=" + urllib.parse.quote(TARGET_AUTHOR)
-LAST_ID_FILE = os.environ.get("LAST_ID_FILE", "last_post_id.txt")
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+LAST_ID_FILE = os.environ.get("LAST_ID_FILE", "ddanzi_last_ids.json")
+
+
+def load_config():
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def fetch_page(url):
@@ -20,28 +24,28 @@ def fetch_page(url):
         return resp.read().decode("utf-8", errors="replace")
 
 
-def get_latest_post_ids():
-    page_html = fetch_page(SEARCH_URL)
+def get_latest_post_ids(author):
+    search_url = "https://www.ddanzi.com/index.php?_filter=search&mid=free&search_target=nick_name&search_keyword=" + urllib.parse.quote(author)
+    page_html = fetch_page(search_url)
     pattern = r'document_srl=(\d+)'
     matches = re.findall(pattern, page_html)
     seen = []
     for m in matches:
         if m not in seen:
             seen.append(m)
-    # document_srl이 큰 게 최신글 → 내림차순 정렬
     seen.sort(key=lambda x: int(x), reverse=True)
     return seen
 
 
-def is_by_target_author(page_html):
-    return TARGET_AUTHOR in page_html
+def is_by_author(page_html, author):
+    return author in page_html
 
 
-def get_post_content(document_srl):
+def get_post_content(document_srl, author):
     url = f"https://www.ddanzi.com/free/{document_srl}"
     page_html = fetch_page(url)
 
-    if not is_by_target_author(page_html):
+    if not is_by_author(page_html, author):
         return None, None, None
 
     title_match = re.search(r'<meta\s+property="og:title"\s+content="([^"]*)"', page_html)
@@ -104,17 +108,17 @@ def send_telegram(text):
                 print(f"Telegram send failed: {result}")
 
 
-def load_last_id():
+def load_last_ids():
     try:
-        with open(LAST_ID_FILE, "r", encoding="utf-8-sig") as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        return ""
+        with open(LAST_ID_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
 
-def save_last_id(post_id):
+def save_last_ids(data):
     with open(LAST_ID_FILE, "w", encoding="utf-8") as f:
-        f.write(post_id)
+        json.dump(data, f, ensure_ascii=False)
 
 
 def main():
@@ -122,51 +126,51 @@ def main():
         print("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set")
         return
 
-    last_id = load_last_id()
-    print(f"Last sent post ID: {last_id or '(none)'}")
-
-    post_ids = get_latest_post_ids()
-    if not post_ids:
-        print("No posts found")
+    config = load_config()
+    authors = config.get("ddanzi", [])
+    if not authors:
+        print("No ddanzi authors in config")
         return
 
-    print(f"Found {len(post_ids)} posts, latest: {post_ids[0]}")
+    last_ids = load_last_ids()
 
-    new_posts = []
-    for pid in post_ids:
-        if int(pid) <= int(last_id or "0"):
-            continue
-        new_posts.append(pid)
+    for author in authors:
+        print(f"\n--- Checking author: {author} ---")
+        last_id = last_ids.get(author, "0")
+        print(f"Last sent post ID: {last_id}")
 
-    new_posts.sort(key=lambda x: int(x))
-
-    if not new_posts:
-        print("No new posts")
-        return
-
-    sent_any = False
-    latest_sent = last_id
-
-    for pid in new_posts:
-        print(f"Processing post {pid}...")
-        title, body, url = get_post_content(pid)
-
-        if title is None:
-            print(f"Skipped {pid} (not by {TARGET_AUTHOR})")
+        post_ids = get_latest_post_ids(author)
+        if not post_ids:
+            print("No posts found")
             continue
 
-        message = f"📌 {title}\n\n{body}\n\n🔗 {url}"
-        send_telegram(message)
-        print(f"Sent: {title}")
-        sent_any = True
-        latest_sent = pid
+        print(f"Found {len(post_ids)} posts, latest: {post_ids[0]}")
 
-    if sent_any:
-        save_last_id(latest_sent)
-        print(f"Updated last ID to {latest_sent}")
-    else:
-        save_last_id(post_ids[0])
-        print("No new posts by target author")
+        new_posts = [pid for pid in post_ids if int(pid) > int(last_id)]
+        new_posts.sort(key=lambda x: int(x))
+
+        if not new_posts:
+            print("No new posts")
+            continue
+
+        latest_sent = last_id
+        for pid in new_posts:
+            print(f"Processing post {pid}...")
+            title, body, url = get_post_content(pid, author)
+
+            if title is None:
+                print(f"Skipped {pid} (not by {author})")
+                continue
+
+            message = f"📌 {title}\n\n{body}\n\n🔗 {url}"
+            send_telegram(message)
+            print(f"Sent: {title}")
+            latest_sent = pid
+
+        last_ids[author] = latest_sent
+
+    save_last_ids(last_ids)
+    print("\nDone.")
 
 
 if __name__ == "__main__":
