@@ -110,6 +110,7 @@ def main():
 
     for blog_id in blog_ids:
         print(f"\n--- Checking blog: {blog_id} ---")
+        is_new = blog_id not in last_ids
         last_log_no = last_ids.get(blog_id, "0")
         print(f"Last sent logNo: {last_log_no}")
 
@@ -125,6 +126,11 @@ def main():
             continue
 
         print(f"Found {len(items)} posts, latest: {items[0]['log_no']}")
+
+        if is_new:
+            last_ids[blog_id] = items[0]["log_no"]
+            print(f"New blog registered, saving latest: {items[0]['log_no']}")
+            continue
 
         new_items = [item for item in items if int(item["log_no"] or "0") > int(last_log_no)]
         new_items.sort(key=lambda x: int(x["log_no"] or "0"))

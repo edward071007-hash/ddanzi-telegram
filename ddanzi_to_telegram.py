@@ -137,6 +137,7 @@ def main():
 
     for author in authors:
         print(f"\n--- Checking author: {author} ---")
+        is_new = author not in last_ids
         last_id = last_ids.get(author, "0")
         print(f"Last sent post ID: {last_id}")
 
@@ -146,6 +147,11 @@ def main():
             continue
 
         print(f"Found {len(post_ids)} posts, latest: {post_ids[0]}")
+
+        if is_new:
+            last_ids[author] = post_ids[0]
+            print(f"New author registered, saving latest: {post_ids[0]}")
+            continue
 
         new_posts = [pid for pid in post_ids if int(pid) > int(last_id)]
         new_posts.sort(key=lambda x: int(x))
