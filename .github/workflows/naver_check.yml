@@ -21,6 +21,7 @@ jobs:
         with:
           path: naver_last_ids.json
           key: naver-last-ids
+          restore-keys: naver-last-ids
 
       - name: Run crawler
         env:

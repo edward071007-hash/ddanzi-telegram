@@ -24,6 +24,7 @@ jobs:
         with:
           path: ddanzi_last_ids.json
           key: ddanzi-last-ids
+          restore-keys: ddanzi-last-ids
 
       - name: Run crawler
         env:
