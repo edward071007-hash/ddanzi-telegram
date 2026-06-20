@@ -5,6 +5,9 @@ on:
     - cron: '*/30 * * * *'  # 30분마다 체크
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   check-and-send:
     runs-on: ubuntu-latest
