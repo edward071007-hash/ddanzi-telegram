@@ -19,13 +19,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Restore last post IDs
-        uses: actions/cache/restore@v4
-        with:
-          path: ddanzi_last_ids.json
-          key: ddanzi-last-ids
-          restore-keys: ddanzi-last-ids
-
       - name: Run crawler
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -33,7 +26,8 @@ jobs:
         run: python ddanzi_to_telegram.py
 
       - name: Save last post IDs
-        uses: actions/cache/save@v4
-        with:
-          path: ddanzi_last_ids.json
-          key: ddanzi-last-ids-${{ github.run_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ddanzi_last_ids.json
+          git diff --cached --quiet || git commit -m "update ddanzi last ids" && git push
