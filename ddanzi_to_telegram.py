@@ -38,7 +38,8 @@ def get_latest_post_ids(author):
 
 
 def is_by_author(page_html, author):
-    return author in page_html
+    match = re.search(r'class="member_\d+\s+author[^"]*"[^>]*>([^<]+)<', page_html)
+    return match is not None and match.group(1).strip() == author
 
 
 def get_post_content(document_srl, author):
