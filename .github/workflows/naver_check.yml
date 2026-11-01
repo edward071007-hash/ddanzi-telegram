@@ -2,7 +2,7 @@ name: Naver Blog to Telegram
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # 30분마다 체크
+    - cron: '0 0 * * *'  # 매일 09:00 KST
   workflow_dispatch:
 
 permissions:
