@@ -73,6 +73,11 @@ def get_post_content(document_srl):
     return title, body, f"https://www.ddanzi.com/free/{document_srl}"
 
 
+def has_keyword(text, keywords):
+    # 키워드 바로 앞에 한글이 붙어 다른 단어의 일부인 경우는 제외 (예전 '주가'가 '이언주가'에 걸리던 문제)
+    return any(re.search(r"(?<![가-힣])" + re.escape(kw), text) for kw in keywords)
+
+
 def send_telegram(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     max_len = 4000
@@ -166,6 +171,11 @@ def main():
 
         if title is None:
             print(f"Skipped {pid} (fetch failed)")
+            continue
+
+        if not has_keyword(title + "\n" + body, keywords):
+            print(f"Skipped {pid} (keyword only inside another word)")
+            latest_sent = pid
             continue
 
         message = f"🔍 {title}\n\n{body}\n\n🔗 {url}"
